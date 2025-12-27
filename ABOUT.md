@@ -1,6 +1,6 @@
 # Consular Raft
 
-Consular Raft is an increment to Raft consensus to support coordinated
+Consular Raft is an increment to Raft consensus to provide coordinated
 scaling over multiple Raft groups.
 
 For large data sets, i.e. state machines with large states, it is
@@ -33,8 +33,9 @@ leader and is called the consul. The senate is a standard Raft group,
 without modification.
 
 The worker groups are modified so that each member holds a reference
-to its local senator. The leader of each worker group is always the
-member whose senator is consul.
+to its local senator, which must be on the same physical server. The
+leader of each worker group is always the member whose senator is
+consul.
 
 Elections are held only within the senate group. If a worker requires
 an election, it asks its senator to conduct an election. Heartbeats

@@ -50,3 +50,57 @@ accessing a senator from a worker is a simple in-process dereference,
 and (2) the availability and liveness of a senator and its
 corresponding workers are naturally coupled, because they are tied to
 the availability and liveness of the same process.
+
+# Read scaling
+
+We want to gain read scaling by serving reads from replica servers and
+parceling out read workloads among all healthy and up-to-date servers.
+
+We provide a few read consistency options.
+
+### Leader strict consistency
+
+Leader reads are always strictly consistent. If a write commits before
+a read arrives __at the leader,__ the read will see the write.
+
+To prevent a deposed leader from serving inconsistent reads, a newly
+elected leader delays committing incoming writes for a fixed delay
+after its election. This delay is long enough to ensure that the
+deposed leader times out and steps down before writes are committed by
+the newly elected leader. Hence, leader reads are always strictly
+consistent.
+
+__Note:__ Writes are always strictly consistent. Writes always require
+a majority quorum, so writes cannot be committed by a deposed leader.
+
+### Replica strict consistency
+
+Strictly consistent reads can be served by replicas. If a write
+commits before a read arrives __at the replica,__ the read will see
+the write.
+
+To ensure a strictly consistent read, a replica receives the read and
+then consults the leader to ensure the replica has applied all writes
+committed before the read arrived __at the replica.__ If not, the read
+is redirected to the leader.
+
+### Replica causal consistency
+
+Causally consistent reads can be served by replicas. If a write
+causally precedes a read, e.g. if a client reads the effects of its
+own write, the read will see the write. Causal consistency is implied
+by strict consistency.
+
+### Replica bounded consistency
+
+Bounded consistency reads can be served by replicas. When a bounded
+consistency read arrives __at the replica,__ the replica determines if
+it is up to date within a bound N, and if not, the read is redirected
+to the leader.
+
+The consistency bound N is defined in terms of heartbeats. A replica
+is N-bound-consistent, or up to date within bound N, if: (1) the
+replica has received a heartbeat within the heartbeat timeout, and (2)
+the replica has applied the Nth previous heartbeat's commit index,
+where N is a positive integer, with 1 for the most recent heartbeat's
+commit index.

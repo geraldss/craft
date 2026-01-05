@@ -98,11 +98,11 @@ the replica has applied the Nth previous heartbeat's commit index,
 where N is a positive integer, with 1 for the most recent heartbeat's
 commit index.
 
-Bounded consistency trades off strict consistency for gains in both
-latency and throughput. Replicas perform the bounds check without
-consulting the leader, improving latency. And by definition, the
-bounds check results in fewer leader redirections than the strict
-check, improving throughput.
+Bounded consistency trades off strict consistency for gains in
+latency, throughput, and availability. Replicas perform the bounds
+check without consulting the leader, improving latency. And by
+definition, bounds checks result in fewer leader redirections than
+strict checks, improving throughput and availability.
 
 ### Replica session consistency
 
@@ -113,6 +113,6 @@ session semantics while enabling higher read performance and
 availability than strict consistency.
 
 Session consistency can be defined in terms of bounded consistency,
-inheriting the latency and throughput benefits. The client can track
-the commit index of its last write, and that commit index can be used
-to set the consistency bound.
+inheriting the performance and availability benefits. The client can
+track the commit index of its last write, and that commit index can be
+used to set the consistency bound.

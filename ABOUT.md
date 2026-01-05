@@ -27,27 +27,27 @@ We want to minimize changes to Raft. We designate a single Raft group
 as global leader candidates, and all other Raft groups as workers that
 actually maintain state.
 
-The Raft group with the global leader candidates is called the senate,
-and its members senators. The leader of the senate group is the global
-leader and is called the consul. The senate is a standard Raft group,
-without modification.
+The Raft group with the global leader candidates is called the
+delegate group, and its members delegates. The leader of the delegate
+group is the global leader and is called the consul. The delegate
+group is a standard Raft group, without modification.
 
 The worker groups are modified so that each member holds a reference
-to its local senator, which must be on the same physical server. The
-leader of each worker group is always the member whose senator is
+to its local delegate, which must be on the same physical server. The
+leader of each worker group is always the member whose delegate is
 consul.
 
-Elections are held only within the senate group. If a worker requires
-an election, it asks its senator to conduct an election. Heartbeats
-are required only within the senate group. When a worker needs to
-check for a heartbeat, it checks if its senator received a
-heartbeat. The senate is a control plane, and the workers a data
-plane.
+Elections are held only within the delegate group. If a worker
+requires an election, it asks its delegate to conduct an
+election. Heartbeats are required only within the delegate group. When
+a worker needs to check for a heartbeat, it checks if its delegate
+received a heartbeat. The delegate group is a control plane, and the
+workers a data plane.
 
-This model works best when a senator and its corresponding workers all
-live in a single process. This has at least two benefits: (1)
-accessing a senator from a worker is a simple in-process dereference,
-and (2) the availability and liveness of a senator and its
+This model works best when a delegate and its corresponding workers
+all live in a single process. This has at least two benefits: (1)
+accessing a delegate from a worker is a simple in-process dereference,
+and (2) the availability and liveness of a delegate and its
 corresponding workers are naturally coupled, because they are tied to
 the availability and liveness of the same process.
 

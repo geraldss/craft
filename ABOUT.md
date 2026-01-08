@@ -4,22 +4,23 @@ Consular Raft is an increment to Raft consensus to provide coordinated
 scaling over multiple Raft groups.
 
 For large data sets, i.e. state machines with large states, it is
-desirable to partition consensus into multiple Raft groups. This
-results in smaller and more manageable Raft logs and snapshots, and
-greater concurrency if writes are spread out across data partitions
-and consensus can be processed concurrently across Raft groups.
+desirable to partition state and consensus into multiple Raft
+groups. This results in smaller and more manageable Raft logs and
+snapshots, and greater concurrency if writes are spread out across
+data partitions and consensus is processed concurrently across Raft
+groups.
 
 The approach here is that all the Raft groups must have the same
 physical server as leader. This enables the leader server to process
 all write transactions without requiring distributed transactions, and
-to serve consistent reads without requiring data from other
-servers. The motivation is to facilitate a broad set of workloads that
-includes complex transactions and analytics.
+to serve consistent reads without consulting other servers. The
+motivation is to facilitate a broad set of workloads that includes
+complex transactions and analytics.
 
-NOTE: Cockroach Labs, Yugabyte, and others have also scaled Raft. The
-approach here is different in that we require all the Raft groups to
-have the same server as leader. Hence we could not reuse the scaling
-work of others.
+__Note:__ Cockroach Labs, Yugabyte, and others have also scaled
+Raft. The approach here is different in that we require all the Raft
+groups to have the same server as leader. Hence we could not reuse the
+scaling work of others.
 
 # Approach
 
@@ -27,10 +28,10 @@ We want to minimize changes to Raft. We designate a single Raft group
 as global leader candidates, and all other Raft groups as workers that
 actually maintain state.
 
-The Raft group with the global leader candidates is called the
-delegate group, and its members delegates. The leader of the delegate
-group is the global leader and is called the consul. The delegate
-group is a standard Raft group, without modification.
+The Raft group of global leader candidates is called the delegate
+group, and its members delegates. The leader of the delegate group is
+the global leader and is called the consul. The delegate group is a
+standard Raft group, without modification.
 
 The worker groups are modified so that each member holds a reference
 to its local delegate, which must be on the same physical server. The
@@ -63,12 +64,13 @@ We provide a few read consistency options.
 Leader reads are always strictly consistent. If a write commits before
 a read arrives __at the leader,__ the read will see the write.
 
-To prevent a deposed leader from serving inconsistent reads, a newly
+To ensure consistent leader reads, even from deposed leaders, a newly
 elected leader delays committing incoming writes for a fixed delay
 after its election. This delay is long enough to ensure that the
 deposed leader times out and steps down before writes are committed by
-the newly elected leader. Hence, leader reads are always strictly
-consistent.
+the newly elected leader. If a read arrives at a deposed leader before
+the newly elected leader commits any write, the read is consistent by
+definition. Hence, leader reads are always strictly consistent.
 
 __Note:__ Writes are always strictly consistent. Writes always require
 a majority quorum, so writes cannot be committed by a deposed leader.
@@ -76,8 +78,8 @@ a majority quorum, so writes cannot be committed by a deposed leader.
 ### Replica strict consistency
 
 Strictly consistent reads can be served by replicas. If a write
-commits before a read arrives __at a replica,__ the read will see the
-write.
+commits before a consistent read arrives __at a replica,__ the read
+will see the write.
 
 To ensure a strictly consistent read, a replica receives the read and
 then consults the leader to ensure the replica has applied all writes
@@ -99,17 +101,17 @@ where N is a positive integer, with 1 for the most recent heartbeat's
 commit index.
 
 Bounded consistency trades off strict consistency for gains in
-latency, throughput, and availability. Replicas perform the bounds
-check without consulting the leader, improving latency. And by
-definition, bounds checks result in fewer leader redirections than
-strict checks, improving throughput and availability.
+latency, throughput, and availability. Replicas perform bounds checks
+without consulting the leader, improving latency. And by definition,
+bounds checks result in fewer leader redirections than strict checks,
+improving throughput and availability.
 
 ### Replica session consistency
 
-Session consistent reads can be served by replicas. If a client reads
+Session-consistent reads can be served by replicas. If a client reads
 the effects of its own write, the read will see the write. For
 session-oriented use cases, session consistency provides strict
-session semantics while enabling higher read performance and
+session semantics while enabling higher read throughput and
 availability than strict consistency.
 
 Session consistency can be defined in terms of bounded consistency,
